@@ -1,0 +1,15 @@
+[Unit]
+Description=Lichtspiel Medienserver
+After=network-online.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+Environment=LS_PORT=8400
+Environment=LS_DATA=/var/lib/lichtspiel
+ExecStart=/usr/bin/python3 /opt/lichtspiel/server.py
+Restart=always
+RestartSec=5
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

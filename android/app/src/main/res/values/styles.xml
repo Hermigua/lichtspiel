@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Lichtspiel" parent="@android:style/Theme.Material.NoActionBar.Fullscreen">
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:colorAccent">@color/acc</item>
+        <item name="android:colorPrimary">@color/bg2</item>
+        <item name="android:textColor">@color/fg</item>
+    </style>
+    <style name="Theme.Lichtspiel.Player">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>
