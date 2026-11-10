@@ -85,7 +85,8 @@ PREF_DEFAULTS = {"audio_lang": "deu", "sub_lang": "deu", "sub_mode": "forced", "
                  "lib_hidden": [], "direct": True,
                  "live_favs": [], "ch_favs": [],              # Lieblingssender (Live-TV) und Lieblings-Sender (eigene Sender)
                  "saver_on": True, "saver_min": 10, "saver_clock": True,   # Bildschirmschoner
-                 "pause_info": True}                          # Pause-Ansicht im Player
+                 "pause_info": True,                          # Pause-Ansicht im Player
+                 "radio_favs": [], "radio_last": None}        # Radio: Lieblingssender und zuletzt gehört
 
 
 def get_prefs(uid):

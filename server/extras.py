@@ -18,7 +18,7 @@ def markers(item_id):
 
 
 def init(route, H):
-    for name in ("live", "channels", "markers"):
+    for name in ("live", "channels", "markers", "radio"):
         try:
             mod = importlib.import_module(name)
         except ImportError:
