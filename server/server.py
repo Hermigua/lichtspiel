@@ -806,6 +806,9 @@ def r_watched(h, iid):
 @route("POST", r"/api/fav/(\d+)")
 def r_fav(h, iid):
     u = h.user()
+    it = db.one("SELECT id,lib_id FROM items WHERE id=?", (int(iid),))
+    if not can_see(u, it):
+        return h.send_json({"error": "Nicht gefunden"}, 404)
     on = bool(h.body().get("on", True))
     if on:
         db.ex("INSERT OR IGNORE INTO favorites(user_id,item_id,added) VALUES(?,?,?)", (u["id"], int(iid), time.time()))

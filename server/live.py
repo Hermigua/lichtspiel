@@ -321,6 +321,8 @@ def init(route, H):
 
     @route("GET", r"/api/live/(\d+)/logo")
     def r_live_logo(h, cid):
+        if not allowed(h.user()):
+            return h.send_json({"error": "Kein Zugriff"}, 403)
         c = db.one("SELECT * FROM live_channels WHERE id=?", (int(cid),))
         fn = logo_file(c) if c else None
         if not fn:
