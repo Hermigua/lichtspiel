@@ -82,7 +82,10 @@ def lib_ids(user, include_hidden=True):
 
 PREF_DEFAULTS = {"audio_lang": "deu", "sub_lang": "deu", "sub_mode": "forced", "sub_size": 100, "sub_bg": 0,
                  "quality": 0, "autoplay": True, "skip_back": 10, "skip_fwd": 30, "lib_order": [],
-                 "lib_hidden": [], "direct": True}
+                 "lib_hidden": [], "direct": True,
+                 "live_favs": [], "ch_favs": [],              # Lieblingssender (Live-TV) und Lieblings-Sender (eigene Sender)
+                 "saver_on": True, "saver_min": 10, "saver_clock": True,   # Bildschirmschoner
+                 "pause_info": True}                          # Pause-Ansicht im Player
 
 
 def get_prefs(uid):
@@ -609,6 +612,18 @@ def next_up_rows(u, ids, limit=20, exclude_shows=()):
     return with_show_title(out)
 
 
+@route("GET", "/api/saver")
+def r_saver(h):
+    """Bildschirmschoner: zufällige Filme und Serien mit Hintergrundbild (nur aus den Bibliotheken des Benutzers)."""
+    ids = list(lib_ids(h.user()))
+    if not ids:
+        return h.send_json([])
+    rows = db.q(f"SELECT id,kind,title,year,plot,logo FROM items WHERE kind IN ('movie','show') AND backdrop IS NOT NULL "
+                f"AND backdrop!='' AND lib_id IN ({','.join('?' * len(ids))}) ORDER BY RANDOM() LIMIT 40", ids)
+    h.send_json([{"id": r["id"], "kind": r["kind"], "title": r["title"], "year": r["year"],
+                  "plot": (r["plot"] or "")[:400], "has_logo": bool(r["logo"])} for r in rows])
+
+
 @route("GET", "/api/home")
 def r_home(h):
     u = h.user()
@@ -933,6 +948,9 @@ def r_play(h, iid):
         "burn": burn, "video": v, "bitrate": media.get("bitrate"), "size": it["size"],
         "next": next_episode(it) if it["kind"] == "episode" else None,
         "markers": extras.markers(it["id"]),
+        "chapters": [c for c in (media.get("chapters") or []) if c.get("end", 0) > c.get("start", 0)],
+        "plot": it.get("plot") or "", "tagline": it.get("tagline") or "",
+        "has_logo": bool(it.get("logo")), "logo_id": it["show_id"] if it["kind"] == "episode" else it["id"],
     })
 
 

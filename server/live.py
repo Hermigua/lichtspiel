@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+import subprocess
 import threading
 import time
 import urllib.parse
@@ -236,6 +237,43 @@ def logo_file(c):
     return fn
 
 
+_SNAP_SEM = threading.Semaphore(2)          # höchstens zwei ffmpeg-Aufrufe für Standbilder gleichzeitig
+_SNAP_LOCKS = {}
+
+
+def snapshot(c):
+    """Ein Bild aus dem laufenden Stream holen (ffmpeg als eigenständiges Programm). Ergebnis bzw. Fehlschlag gilt 5 Minuten."""
+    d = db.path("livesnaps")
+    os.makedirs(d, exist_ok=True)
+    fn = os.path.join(d, f"{c['id']}.jpg")
+    fail = fn + ".fail"
+    fresh = lambda: any(os.path.exists(x) and time.time() - os.path.getmtime(x) < 300 for x in (fn, fail))
+    lock = _SNAP_LOCKS.setdefault(c["id"], threading.Lock())
+    if not fresh():
+        with lock:
+            if not fresh() and _SNAP_SEM.acquire(timeout=20):
+                try:
+                    src, maps = best_variant(c["url"], c["ua"], max_h=720)
+                    tmp = fn + ".tmp.jpg"
+                    r = subprocess.run(["ffmpeg", "-v", "error", "-y", "-nostdin", "-user_agent", c["ua"] or UA,
+                                        "-rw_timeout", "8000000", "-i", src, "-map", "0:v:0", "-an", "-sn",
+                                        "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "5", tmp],
+                                       timeout=25, stdin=subprocess.DEVNULL, capture_output=True)
+                    if r.returncode == 0 and os.path.exists(tmp) and os.path.getsize(tmp) > 1000:
+                        os.replace(tmp, fn)
+                        if os.path.exists(fail):
+                            os.remove(fail)
+                    else:
+                        open(fail, "w").close()
+                except Exception:
+                    open(fail, "w").close()
+                finally:
+                    _SNAP_SEM.release()
+    if os.path.exists(fn) and time.time() - os.path.getmtime(fn) < 1800:      # älter als 30 Minuten: lieber keins
+        return fn
+    return None
+
+
 def init(route, H):
     with db._lock:
         db.conn().executescript(SCHEMA)
@@ -288,6 +326,19 @@ def init(route, H):
         if not fn:
             return h.send_json({"error": "kein Logo"}, 404)
         stream.send_file(h, fn, cache="private, max-age=86400")
+
+    @route("GET", r"/api/live/(\d+)/snap")
+    def r_live_snap(h, cid):
+        """Standbild des laufenden Streams (480 px breit) für die Senderübersicht – höchstens alle 5 Minuten neu."""
+        if not allowed(h.user()):
+            return h.send_json({"error": "Kein Zugriff"}, 403)
+        c = db.one("SELECT * FROM live_channels WHERE id=?", (int(cid),))
+        if not c:
+            return h.send_json({"error": "Unbekannter Sender"}, 404)
+        fn = snapshot(c)
+        if not fn:
+            return h.send_json({"error": "Kein Standbild"}, 404)
+        stream.send_file(h, fn, cache="private, max-age=240")
 
     @route("GET", r"/api/live/(\d+)/url")
     def r_live_url(h, cid):

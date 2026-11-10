@@ -388,8 +388,11 @@ async function openPlayer(id, o = {}) {
     <div class="ctl"><button id="pBack" title="Zurück">${ico("back")}</button><button class="big" id="pPlay">${ico("pause")}</button>
     <button id="pFwd" title="Vor">${ico("fwd")}</button><button id="pNext" class="hidden" title="Nächste Folge">${ico("next")}</button>
     <span class="tm" id="pTm">0:00 / 0:00</span><span class="sp"></span><span class="end" id="pEnd"></span>
+    <button id="pCh" class="hidden" title="Kapitel (K)">${ico("list")}</button><button id="pSpd" title="Tempo">${ico("speed")}</button>
+    <button id="pSleep" title="Schlaf-Timer">${ico("moon")}</button>
     <button id="pAud" title="Ton">${ico("audio")}</button><button id="pSub" title="Untertitel">${ico("sub")}</button>
-    <button id="pQ" title="Qualität">${ico("hq")}</button><button id="pFull" title="Vollbild (F)">${ico("full")}</button></div></div></div>`;
+    <button id="pQ" title="Qualität">${ico("hq")}</button><button id="pFull" title="Vollbild (F)">${ico("full")}</button></div></div></div>
+    <div class="pause-info"></div>`;
   const v = $("video", el);
   P.v = v; P.fallback = 0; P.closing = false; P.tv = o.tv || null; P.nuDismissed = false;
   v.addEventListener("waiting", () => $(".center", el).classList.remove("hidden"));
@@ -412,6 +415,11 @@ async function openPlayer(id, o = {}) {
   $("#pAud").onclick = e => { e.stopPropagation(); popMenu("aud"); };
   $("#pSub").onclick = e => { e.stopPropagation(); popMenu("sub"); };
   $("#pQ").onclick = e => { e.stopPropagation(); popMenu("q"); };
+  $("#pCh").onclick = e => { e.stopPropagation(); popMenu("ch"); };
+  $("#pSpd").onclick = e => { e.stopPropagation(); popMenu("spd"); };
+  $("#pSleep").onclick = e => { e.stopPropagation(); popMenu("sleep"); };
+  v.addEventListener("pause", () => { if (S.prefs.pause_info !== false && P.info && !P.live) { paintPause(); el.classList.add("paused"); } });
+  v.addEventListener("play", () => el.classList.remove("paused"));
   $("#pNext").onclick = () => P.info.next && openPlayer(P.info.next.id, { start: 0 });
   setupSeek();
   P.timer = setInterval(() => { if (!v.paused) report("playing"); }, 10000);
@@ -430,6 +438,7 @@ async function startPlay(id, o) {
   $("#pT").textContent = info.kind === "episode" ? info.show_title : info.title;
   $("#pS").textContent = info.kind === "episode" ? `Staffel ${info.season} · Folge ${info.episode} – ${info.title}` : (info.year || "");
   $("#pNext").classList.toggle("hidden", !info.next);
+  $("#pCh").classList.toggle("hidden", !(info.chapters || []).length);
   updInfoLine();
   setSrc(info.start || 0);
   loadSubs(info.sub_sel);
@@ -447,11 +456,12 @@ function setSrc(t) {
   if (i.mode === "direct") {
     P.offset = 0;
     v.src = i.url;
-    const go = () => { if (t > 0) v.currentTime = t; v.play().catch(() => showUi()); };
+    const go = () => { if (t > 0) v.currentTime = t; v.playbackRate = P.rate || 1; v.play().catch(() => showUi()); };
     v.addEventListener("loadedmetadata", go, { once: true });
   } else {
     P.offset = t;
     v.src = i.url + "&t=" + t.toFixed(2);
+    v.playbackRate = P.rate || 1;
     v.play().catch(() => showUi());
   }
 }
@@ -487,8 +497,10 @@ function tick() {
   const b = P.v.buffered;
   if (b.length && d) $("#pSeek .bf").style.width = Math.min(100, (P.offset + b.end(b.length - 1)) / d * 100) + "%";
   $("#pTm").textContent = `${fmtT(t)} / ${fmtT(d)}`;
-  const end = new Date(Date.now() + (d - t) * 1000);
-  $("#pEnd").textContent = d ? `Ende ${end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` : "";
+  const rest = (d - t) / (P.rate || 1), end = new Date(Date.now() + rest * 1000), rm = Math.max(0, Math.round(rest / 60));
+  $("#pEnd").textContent = d ? `noch ${rm >= 60 ? Math.floor(rm / 60) + " Std. " + (rm % 60) + " Min." : rm + " Min."} · Ende ${end.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}` +
+    (P.sleep ? ` · ☾ ${P.sleep === "end" ? "nach diesem Titel" : fmtT((P.sleep - Date.now()) / 1000)}` : "") : "";
+  if (P.sleep && P.sleep !== "end" && Date.now() >= P.sleep) { P.sleep = null; P.v.pause(); toast("Schlaf-Timer: angehalten", 4000); }
   renderSub(t);
   checkMarkers(t, d);
 }
@@ -499,6 +511,11 @@ function setupSeek() {
   s.onmouseleave = () => tip.classList.add("hidden");
   s.onclick = e => seekTo(at(e));
   // Markierungen (Intro/Abspann)
+  setTimeout(() => (P.info?.chapters || []).forEach(c => {          // Kapitel als kleine Striche
+    const d = dur(); if (!d || c.start < 1) return;
+    const e = document.createElement("div"); e.className = "ch"; e.style.left = (c.start / d * 100) + "%"; s.appendChild(e);
+  }), 1500);
+  s.addEventListener("mousemove", e => { const ch = chapterAt(at(e)); if (ch && ch.title) tip.textContent += " · " + ch.title; });
   setTimeout(() => (P.info?.markers || []).forEach(m => {
     const d = dur(); if (!d) return;
     const e = document.createElement("div"); e.className = "mk";
@@ -515,6 +532,7 @@ function report(state) {
 }
 function onEnded() {
   report("stopped");
+  if (P.sleep === "end") { P.sleep = null; toast("Schlaf-Timer: Ende des Titels", 4000); return closePlayer(); }
   if (P.tv && window.openChannel) return openChannel(P.tv.id);
   const n = P.info && P.info.next;
   if (n && S.prefs.autoplay !== false) openPlayer(n.id, { start: 0 });
@@ -541,7 +559,7 @@ function closePlayer(silent) {
   if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
   el.classList.add("hidden"); el.innerHTML = "";
   const id = P.info && P.info.id;
-  P.info = null; P.v = null; P.cues = [];
+  P.info = null; P.v = null; P.cues = []; P.sleep = null; P.rate = 1;
   if (!silent && id && location.hash.startsWith("#/item/")) route();
   else if (!silent && (!location.hash || location.hash === "#/")) route();
 }
@@ -555,6 +573,11 @@ function popMenu(kind) {
     `<h4>Größe</h4>${[75, 100, 125, 150].map(z => `<button data-z="${z}" class="${(S.prefs.sub_size || 100) === z ? "on" : ""}">${z} %</button>`).join("")}`;
   if (kind === "q") h = `<h4>Qualität</h4>${[[0, "Original"], [1080, "1080p"], [720, "720p"], [480, "480p"], [360, "360p"]].map(([q, l]) =>
     `<button data-q="${q}" class="${(P.height || 0) === q ? "on" : ""}">${l}</button>`).join("")}<h4>Info</h4><div style="padding:4px 12px;font-size:13px;color:#94a3b8">${esc($("#pI").textContent)}</div>`;
+  if (kind === "ch") { const now = chapterAt(cur());
+    h = `<h4>Kapitel</h4>` + (i.chapters || []).map((c, n) => `<button data-ch="${n}" class="${c === now ? "on" : ""}">${fmtT(c.start)} · ${esc(c.title || "Kapitel " + (n + 1))}</button>`).join(""); }
+  if (kind === "spd") h = `<h4>Tempo</h4>${[0.75, 1, 1.1, 1.25, 1.5, 2].map(r => `<button data-r="${r}" class="${(P.rate || 1) === r ? "on" : ""}">${r === 1 ? "Normal" : String(r).replace(".", ",") + "×"}</button>`).join("")}`;
+  if (kind === "sleep") h = `<h4>Schlaf-Timer</h4><button data-sl="0" class="${!P.sleep ? "on" : ""}">Aus</button>${[15, 30, 45, 60, 90].map(m => `<button data-sl="${m}">${m} Minuten</button>`).join("")}
+    <button data-sl="end" class="${P.sleep === "end" ? "on" : ""}">Nach diesem Titel</button>`;
   const pop = document.createElement("div"); pop.className = "pop"; pop.dataset.k = kind; pop.innerHTML = h;
   pop.onclick = e => {
     e.stopPropagation();
@@ -566,12 +589,27 @@ function popMenu(kind) {
       if (s && !s.text || i.burn != null) startPlay(P.id, { start: t, audio: i.audio_sel, sub: b.dataset.s, height: P.height });
       else { i.sub_sel = b.dataset.s || null; loadSubs(i.sub_sel); }
     } else if (b.dataset.z) { S.prefs.sub_size = +b.dataset.z; api("/api/me/prefs", { method: "PUT", body: { sub_size: S.prefs.sub_size } }); applySubStyle(); }
+    else if (b.dataset.ch !== undefined) seekTo(i.chapters[+b.dataset.ch].start + 0.1);
+    else if (b.dataset.r) { P.rate = +b.dataset.r; P.v.playbackRate = P.rate; toast("Tempo " + (P.rate === 1 ? "normal" : String(P.rate).replace(".", ",") + "×"), 1200); }
+    else if (b.dataset.sl !== undefined) { const m = b.dataset.sl; P.sleep = m === "0" ? null : m === "end" ? "end" : Date.now() + +m * 60000;
+      toast(P.sleep ? "Schlaf-Timer: " + (m === "end" ? "nach diesem Titel" : m + " Minuten") : "Schlaf-Timer aus", 1600); tick(); }
     else if (b.dataset.q !== undefined) startPlay(P.id, { start: t, audio: i.audio_sel, sub: i.sub_sel, height: +b.dataset.q || null, force: +b.dataset.q ? "transcode" : undefined });
     pop.remove();
   };
   el.appendChild(pop); showUi();
 }
 document.addEventListener("click", () => $("#player .pop")?.remove());
+
+/* Kapitel und Pause-Ansicht */
+function chapterAt(t) { const c = (P.info && P.info.chapters) || []; let r = null; for (const x of c) if (t >= x.start) r = x; return r; }
+function paintPause() {
+  const i = P.info, box = $("#player .pause-info"); if (!i || !box) return;
+  const ch = chapterAt(cur());
+  box.innerHTML = `${i.has_logo ? `<img src="${img(i.logo_id, "logo", 840)}" alt="" onerror="this.remove()">` : ""}
+    <div class="badge2">PAUSE</div><h2>${esc(i.kind === "episode" ? i.show_title : i.title)}</h2>
+    <div class="st">${i.kind === "episode" ? `Staffel ${i.season} · Folge ${i.episode} – ${esc(i.title)}` : esc(i.year || "")}${ch && ch.title ? ` · Kapitel: ${esc(ch.title)}` : ""}</div>
+    ${i.plot ? `<p>${esc(i.plot)}</p>` : ""}`;
+}
 
 /* Untertitel: eigener VTT-Leser und eigene Darstellung */
 function parseVtt(txt) {
@@ -645,6 +683,7 @@ document.addEventListener("keydown", e => {
   else if (k === "ArrowUp") { e.preventDefault(); P.v.volume = Math.min(1, P.v.volume + .1); toast("Lautstärke " + Math.round(P.v.volume * 100) + " %", 900); }
   else if (k === "ArrowDown") { e.preventDefault(); P.v.volume = Math.max(0, P.v.volume - .1); toast("Lautstärke " + Math.round(P.v.volume * 100) + " %", 900); }
   else if (k === "f") toggleFull();
+  else if ((k === "c" || k === "K") && (P.info.chapters || []).length) { e.preventDefault(); popMenu("ch"); }
   else if (k === "m") { P.v.muted = !P.v.muted; toast(P.v.muted ? "Stumm" : "Ton an", 900); }
   else if (k === "n" && P.info.next) openPlayer(P.info.next.id, { start: 0 });
   else if (k === "Escape" && !document.fullscreenElement) closePlayer();
@@ -655,11 +694,12 @@ window.addEventListener("beforeunload", () => {
 });
 
 /* ---------- Einstellungen ---------- */
+const UNLICENSE = "This is free and unencumbered software released into the public domain.\n\nAnyone is free to copy, modify, publish, use, compile, sell, or\ndistribute this software, either in source code form or as a compiled\nbinary, for any purpose, commercial or non-commercial, and by any\nmeans.\n\nIn jurisdictions that recognize copyright laws, the author or authors\nof this software dedicate any and all copyright interest in the\nsoftware to the public domain. We make this dedication for the benefit\nof the public at large and to the detriment of our heirs and\nsuccessors. We intend this dedication to be an overt act of\nrelinquishment in perpetuity of all present and future rights to this\nsoftware under copyright law.\n\nTHE SOFTWARE IS PROVIDED \"AS IS\", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\nIN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR\nOTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,\nARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR\nOTHER DEALINGS IN THE SOFTWARE.\n\nFor more information, please refer to <https://unlicense.org/>\n";
 const SET_PAGES = [
   { id: "wiedergabe", t: "Wiedergabe" }, { id: "untertitel", t: "Untertitel" }, { id: "startseite", t: "Startseite & Menü" },
-  { id: "konto", t: "Konto" },
+  { id: "anzeige", t: "Player & Bildschirmschoner" }, { id: "konto", t: "Konto" },
   { id: "bibliotheken", t: "Bibliotheken", admin: true, grp: "Server" }, { id: "benutzer", t: "Benutzer", admin: true },
-  { id: "server", t: "Umwandlung & Scan", admin: true }, { id: "aktivitaet", t: "Aktivität", admin: true }, { id: "info", t: "Über Lichtspiel" },
+  { id: "server", t: "Umwandlung & Scan", admin: true }, { id: "aktivitaet", t: "Aktivität", admin: true }, { id: "info", t: "Über & Lizenz" },
 ];
 function seg(name, opts, valNow) {
   return `<div class="seg" data-seg="${name}">${opts.map(([v, l]) => `<button data-v='${JSON.stringify(v)}' class="${JSON.stringify(v) === JSON.stringify(valNow) ? "on" : ""}">${esc(l)}</button>`).join("")}</div>`;
@@ -725,6 +765,18 @@ async function viewSettings(v, page, seq) {
       });
     };
     draw();
+  } else if (page === "anzeige") {
+    b.innerHTML = `<h2>Player & Bildschirmschoner</h2><div class="panel"><h3>Player</h3>
+      <div class="fr"><span class="l">Pause-Ansicht</span>${seg("pause_info", [[true, "An"], [false, "Aus"]], pr.pause_info)}</div>
+      <div class="fr hint">Bei Pause erscheinen Logo, Titel, Kapitel und Inhaltsangabe über dem Bild.</div></div>
+      <div class="panel"><h3>Bildschirmschoner</h3>
+      <div class="fr"><span class="l">Bildschirmschoner</span>${seg("saver_on", [[true, "An"], [false, "Aus"]], pr.saver_on)}</div>
+      <div class="fr"><span class="l">Startet nach</span>${seg("saver_min", [[2, "2 Min."], [5, "5 Min."], [10, "10 Min."], [20, "20 Min."], [30, "30 Min."]], pr.saver_min)}</div>
+      <div class="fr"><span class="l">Uhr anzeigen</span>${seg("saver_clock", [[true, "Ja"], [false, "Nein"]], pr.saver_clock)}</div>
+      <div class="fr"><span class="l"></span><button class="btn" id="svTest">${ico("moon")}Jetzt testen</button></div>
+      <div class="fr hint">Hintergrundbilder deiner Filme und Serien mit Uhr – nicht während eines laufenden Films oder Live-TV. Jede Taste oder Mausbewegung beendet ihn. Auch über den Mond-Knopf oben startbar.</div></div>`;
+    bindSegs(b, savePref);
+    $("#svTest").onclick = () => setTimeout(() => window.saverStart && saverStart(), 300);
   } else if (page === "konto") {
     b.innerHTML = `<h2>Konto</h2><div class="panel"><h3>Passwort ändern</h3><form id="pwf">
       <div class="fr"><label>Altes Passwort</label><input type="password" name="old" autocomplete="current-password"></div>
@@ -736,9 +788,16 @@ async function viewSettings(v, page, seq) {
   else if (page === "benutzer" && S.user.admin) await setUsers(b);
   else if (page === "server" && S.user.admin) await setServer(b);
   else if (page === "aktivitaet" && S.user.admin) await setActivity(b, seq);
-  else if (page === "info") b.innerHTML = `<h2>Über Lichtspiel</h2><div class="panel"><p><b>Lichtspiel ${esc(S.state.version)}</b> – eigener Medienserver.</p>
-    <p>Komplett selbst geschrieben: Server nur mit der Python-Standardbibliothek, Oberfläche ohne fremde Bibliotheken. Für Umwandlung, Medieninfos und Bilder wird das auf dem Server installierte Programm ffmpeg/ffprobe als eigenständiges Werkzeug aufgerufen.</p>
-    <p>Lizenz: gemeinfrei (The Unlicense) – frei nutzbar, veränderbar und weitergebbar.</p></div>`;
+  else if (page === "info") b.innerHTML = `<h2>Über & Lizenz</h2><div class="panel"><p><b>Lichtspiel ${esc(S.state.version)}</b> – eigener Medienserver.</p>
+    <p>Komplett selbst geschrieben und gemeinfrei (The Unlicense): frei nutzbar, veränderbar und weitergebbar – auch gewerblich.</p></div>
+    <div class="panel"><h3>Fremde Bestandteile</h3><table class="tbl">
+      <tr><td><b>Server</b></td><td>nur Python-Standardbibliothek und SQLite (gemeinfrei) – kein fremder Code</td></tr>
+      <tr><td><b>Weboberfläche</b></td><td>eigenes HTML, CSS und JavaScript ohne Bibliotheken; Symbole selbst gezeichnet</td></tr>
+      <tr><td><b>TV-App</b></td><td>reines Java gegen das Android-SDK – keine Zusatzbibliotheken im APK</td></tr>
+      <tr><td><b>ffmpeg / ffprobe</b></td><td>wird <i>nicht</i> mitgeliefert, sondern als eigenständiges Programm des Servers aufgerufen (Medieninfos, Umwandlung, Standbilder). Es gilt die Lizenz der installierten Fassung (LGPL/GPL, <a href="https://ffmpeg.org/legal.html" target="_blank" rel="noopener" style="color:var(--acc)">ffmpeg.org/legal</a>).</td></tr></table></div>
+    <div class="panel"><h3>Daten und Quellen</h3><p>Lichtspiel fragt keine Online-Dienste ab. Titel, Bilder und Beschreibungen stammen aus deinen eigenen Medienordnern (NFO und Bilder),
+      Senderlisten und Programmdaten nur aus Quellen, die ein Administrator selbst einträgt. Für deren Inhalte (Streams, Logos, Programmdaten) gelten die Bedingungen der jeweiligen Anbieter.</p></div>
+    <div class="panel"><h3>Lizenztext</h3><pre style="white-space:pre-wrap;font-size:13px;color:var(--dim)">${esc(UNLICENSE)}</pre></div>`;
   else b.innerHTML = "<p>Seite nicht gefunden.</p>";
 }
 

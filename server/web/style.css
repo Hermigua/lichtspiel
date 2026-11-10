@@ -78,7 +78,7 @@ button { cursor: pointer; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 18px; }
 .toolbar h1 { margin: 0 12px 0 0; font-size: 24px; }
 .toolbar .cnt { color: var(--dim); }
-select, input[type=text], input[type=password], input[type=number], input[type=url], textarea {
+select, input[type=text], input[type=search], input[type=password], input[type=number], input[type=url], textarea {
   background: var(--bg3); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; outline: none; }
 select:focus, input:focus, textarea:focus { border-color: var(--acc); }
 .btn { display: inline-flex; align-items: center; gap: 8px; background: var(--bg3); border: 1px solid var(--line);
@@ -289,3 +289,121 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
 .guide .gp.on { background: #17423f; }
 .guide .gp b { display: block; line-height: 1.2; overflow-wrap: anywhere; }
 .guide .gp span { color: var(--dim); font-size: 12px; white-space: nowrap; }
+
+/* Senderübersicht (Live-TV, eigene Sender) */
+.dim { color: var(--dim); }
+.ov .ovq { width: 300px; max-width: 100%; }
+.ovhero { position: relative; display: flex; gap: 26px; align-items: center; padding: 24px 28px; border-radius: 16px; overflow: hidden;
+  background: linear-gradient(120deg, #142029, #0f141b); border: 1px solid var(--line); margin-bottom: 18px; min-height: 250px; }
+.ovhero.in .ovhtx, .ovhero.in .ovhpic { animation: ovin .45s ease; }
+@keyframes ovin { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.ovhpic { order: 2; width: min(40%, 460px); aspect-ratio: 16/9; flex: none; border-radius: 12px; overflow: hidden; background: #1a222d; box-shadow: 0 10px 34px #0009; }
+.ovhpic img, .ovpic img, .qfp img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ovhtx { flex: 1; min-width: 0; }
+.ovhch { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.ovhch b { display: block; font-size: 19px; }
+.ovlive { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 800; letter-spacing: .1em; color: #ff6b6b; }
+.ovlive i { width: 8px; height: 8px; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 8px #ff4d4d; }
+.ovhero h2 { margin: 0; font-size: 28px; line-height: 1.2; overflow-wrap: anywhere; }
+.ovsub { color: #cfd8e3; margin-top: 2px; }
+.ovtime { color: var(--dim); font-size: 14px; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.ovbar { height: 4px; border-radius: 3px; background: #ffffff22; overflow: hidden; margin-top: 8px; max-width: 520px; }
+.ovbar i { display: block; height: 100%; background: var(--acc); }
+.ovbar.sm { max-width: 170px; margin: 6px 0 4px; }
+.ovhero p { color: #d3dbe5; margin: 10px 0 0; max-width: 760px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.ovnx { color: var(--dim); font-size: 13.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.ovnx b { color: var(--fg); }
+.ovhero .ovnx { margin-top: 8px; font-size: 14px; }
+.ovlogo { display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 40px; flex: none; border-radius: 8px;
+  background: #0b1016; border: 1px solid var(--line); padding: 3px; overflow: hidden; font-size: 11px; font-weight: 700; text-align: center; line-height: 1.1; }
+.ovlogo.big { width: 84px; height: 54px; font-size: 13px; }
+.ovlogo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ovchips { position: sticky; top: 56px; z-index: 5; display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; background: linear-gradient(var(--bg) 80%, transparent); scrollbar-width: none; }
+.chipb { flex: none; background: var(--bg3); border: 1px solid var(--line); border-radius: 999px; padding: 6px 14px; color: #cbd5e1; font-weight: 600; }
+.chipb.on, .chipb:hover { border-color: var(--acc); color: var(--acc); }
+.ovsec { margin-top: 14px; }
+.ovsec h2 { font-size: 20px; margin: 6px 0 10px; } .ovsec h2 small { color: var(--dim); font-size: 13px; font-weight: 600; margin-left: 6px; }
+.ovlist { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--bg2); }
+.ovr { display: grid; grid-template-columns: 112px 200px minmax(0, 1.35fr) minmax(0, 1fr) 96px; gap: 18px; align-items: center;
+  padding: 10px 16px; border-bottom: 1px solid #ffffff0d; cursor: pointer; }
+.ovr:last-child { border-bottom: 0; }
+.ovr:hover, .ovr:focus-visible { background: #ffffff0b; outline: none; }
+.ovr:focus-visible { box-shadow: inset 3px 0 0 var(--acc); }
+.ovpic { aspect-ratio: 16/9; border-radius: 7px; overflow: hidden; background: #1a222d; }
+.ovch { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ovch b { font-size: 15px; overflow-wrap: anywhere; }
+.ovt { font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; } .ovt span { font-weight: 500; color: var(--dim); font-size: 13.5px; }
+.ovt.dim { color: var(--dim); font-weight: 600; }
+.ovnow small { color: var(--dim); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+.ovbtn { display: flex; gap: 6px; justify-content: flex-end; }
+.ovheart.on { color: #ff5a6e; border-color: #ff5a6e; }
+.ovheart.on .ico { fill: currentColor; }
+.ovmodal { position: fixed; inset: 0; background: #000b; z-index: 70; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.ovmbox { background: var(--bg2); border: 1px solid var(--line); border-radius: 14px; padding: 18px; width: min(760px, 100%); max-height: 86vh; overflow-y: auto; }
+.ovpi { display: grid; grid-template-columns: 64px 1fr; gap: 12px; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+.ovpi.on { background: #17423f55; border-radius: 8px; }
+.ovpi small { color: var(--dim); display: block; margin-top: 2px; line-height: 1.4; }
+
+/* Schnellzugriff in der Kopfzeile */
+#qfav { position: relative; display: flex; gap: 6px; }
+#qfav > button { width: 36px; height: 36px; border-radius: 50%; border: 0; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #3ee0cf, #1f9e93); color: #04201e; }
+#qfav > button:hover { filter: brightness(1.12); }
+#qfav > button .ico { width: 18px; height: 18px; }
+#qfdrop { position: absolute; top: 46px; left: 0; width: 340px; background: var(--bg3); border: 1px solid var(--line); border-radius: 12px;
+  padding: 6px; box-shadow: 0 14px 36px #000b; z-index: 30; }
+.qfh { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: var(--dim); padding: 8px 10px 6px; }
+.qfi { display: flex; align-items: center; gap: 12px; width: 100%; background: none; border: 0; padding: 7px 8px; border-radius: 8px; text-align: left; }
+.qfi:hover { background: var(--bg2); }
+.qfp { width: 96px; aspect-ratio: 16/9; flex: none; border-radius: 6px; overflow: hidden; background: #1a222d; }
+.qft { flex: 1; min-width: 0; } .qft b { display: block; overflow-wrap: anywhere; } .qft small { color: var(--dim); overflow-wrap: anywhere; }
+.qfm { display: block; padding: 8px 10px; color: var(--acc); font-weight: 600; }
+
+/* Bildschirmschoner */
+#saver { position: fixed; inset: 0; z-index: 90; background: #000; cursor: none; }
+.svimg { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.6s; transform: scale(1.04); }
+.svimg.on { opacity: 1; animation: svzoom 20s linear forwards; }
+@keyframes svzoom { from { transform: scale(1.04); } to { transform: scale(1.12); } }
+.svshade { position: absolute; inset: 0; background: linear-gradient(0deg, #000d, transparent 45%), linear-gradient(180deg, #0009, transparent 30%); }
+.svclock { position: absolute; left: 48px; top: 36px; text-shadow: 0 2px 12px #000; }
+.svclock b { display: block; font-size: 72px; font-weight: 300; line-height: 1; }
+.svclock span { font-size: 20px; color: #e2e8f0; }
+.svinfo { position: absolute; left: 48px; bottom: 44px; max-width: 60%; text-shadow: 0 2px 12px #000; }
+.svinfo img { max-width: 420px; max-height: 140px; display: block; margin-bottom: 8px; filter: drop-shadow(0 2px 10px #000); }
+.svinfo h2 { font-size: 40px; margin: 0 0 6px; overflow-wrap: anywhere; }
+
+/* Player: Kapitel, Tempo, Schlaf-Timer, Pause-Ansicht */
+#player .seek .ch { position: absolute; width: 3px; height: 9px; margin-left: -1px; background: #000c; border-radius: 1px; pointer-events: none; }
+#player .left { color: #e2e8f0; font-size: 14px; font-variant-numeric: tabular-nums; }
+#player .pause-info { position: absolute; left: 0; right: 0; bottom: 0; top: 0; display: flex; flex-direction: column; justify-content: flex-end;
+  padding: 0 56px 170px; background: linear-gradient(90deg, #000d, #0006 55%, transparent); opacity: 0; transition: opacity .5s; pointer-events: none; }
+#player.paused .pause-info { opacity: 1; }
+#player .pause-info img { max-width: 420px; max-height: 130px; object-fit: contain; object-position: left; margin-bottom: 10px; }
+#player .pause-info h2 { font-size: 38px; margin: 0 0 6px; }
+#player .pause-info .st { color: #cbd5e1; font-size: 17px; margin-bottom: 10px; }
+#player .pause-info p { max-width: 720px; color: #d3dbe5; line-height: 1.55; font-size: 16px; margin: 0; }
+#player .badge2 { font-size: 12px; font-weight: 700; color: var(--acc); }
+
+@media (max-width: 1100px) {
+  .ovr { grid-template-columns: 96px 160px minmax(0, 1fr) 90px; }
+  .ovr .ovnx { grid-column: 3; grid-row: 2; margin-top: -10px; }
+  .ovr .ovbtn { grid-column: 4; grid-row: 1 / span 2; }
+  .ovr .ovpic, .ovr .ovch { grid-row: 1 / span 2; }
+}
+@media (max-width: 700px) {
+  .ovhero { flex-direction: column; align-items: stretch; padding: 16px; gap: 14px; }
+  .ovhpic { order: 0; width: 100%; }
+  .ovhero h2 { font-size: 22px; }
+  .ovhero .actions .btn.big { flex: 1 1 auto; justify-content: center; }
+  .ovr { grid-template-columns: 96px minmax(0, 1fr); gap: 6px 12px; padding: 10px; }
+  .ovr .ovpic { grid-row: 1 / span 3; align-self: start; }
+  .ovr .ovch, .ovr .ovnow, .ovr .ovnx { grid-column: 2; grid-row: auto; margin: 0; }
+  .ovr .ovch .ovlogo { width: 44px; height: 28px; }
+  .ovr .ovbtn { grid-column: 2; grid-row: auto; justify-content: flex-start; }
+  .ov .ovq { width: 100%; }
+  #qfav > button { width: 32px; height: 32px; }
+  #qfdrop { position: fixed; left: 10px; right: 10px; top: 58px; width: auto; }
+  .svclock { left: 20px; top: 20px; } .svclock b { font-size: 52px; }
+  .svinfo { left: 20px; bottom: 24px; max-width: 90%; } .svinfo h2 { font-size: 28px; } .svinfo img { max-width: 260px; }
+  #player .pause-info { padding: 0 18px 150px; } #player .pause-info h2 { font-size: 26px; }
+}
